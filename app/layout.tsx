@@ -1,5 +1,5 @@
+import Container from "@/components/global/Container";
 import Navbar from "@/components/navbar/Navbar";
-import { Container } from "lucide-react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
