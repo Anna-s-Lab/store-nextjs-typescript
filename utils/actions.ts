@@ -1,5 +1,8 @@
+"use server";
 import db from "@/utils/db";
+import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { imageSchema, productSchema, validateWithZodSchema } from "./schemas";
 
 export const fetchFeaturedProducts = async () => {
   const products = await db.product.findMany({
@@ -10,7 +13,7 @@ export const fetchFeaturedProducts = async () => {
   return products;
 };
 
-export const fetchAllProducts = ({ search = "" }: { search: string }) => {
+export const fetchAllProducts = async ({ search = "" }: { search: string }) => {
   return db.product.findMany({
     where: {
       OR: [
@@ -34,4 +37,44 @@ export const fetchSingleProduct = async (productId: string) => {
     redirect("/products");
   }
   return product;
+};
+
+const renderError = (error: unknown): { message: string } => {
+  console.log(error);
+  return {
+    message: error instanceof Error ? error.message : "An error occurred",
+  };
+};
+
+const getAuthUser = async () => {
+  const user = await currentUser();
+  if (!user) {
+    throw new Error("You must be logged in to access this route");
+  }
+  return user;
+};
+
+export const createProductAction = async (
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> => {
+  const user = await getAuthUser();
+  try {
+    const rawData = Object.fromEntries(formData);
+    const file = formData.get("image") as File;
+    const validatedFields = validateWithZodSchema(productSchema, rawData);
+    const validatedFile = validateWithZodSchema(imageSchema, { image: file });
+    console.log(validatedFile);
+
+    await db.product.create({
+      data: {
+        ...validatedFields,
+        image: "/images/1.jpg",
+        clerkId: user.id,
+      },
+    });
+    return { message: "product created" };
+  } catch (error) {
+    return renderError(error);
+  }
 };
